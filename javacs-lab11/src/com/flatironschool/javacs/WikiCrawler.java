@@ -5,6 +5,7 @@ import java.util.LinkedList;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Queue;
+import org.jsoup.nodes.Node;
 
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -55,7 +56,24 @@ public class WikiCrawler {
 	 */
 	public String crawl(boolean testing) throws IOException {
         // FILL THIS IN!
-		return null;
+        if (queue.isEmpty()) {
+        	return null;
+        }
+
+        String url = queue.poll();
+
+        Elements para;
+        if (!testing) {
+        	if (index.isIndexed(url)) {
+        		return null;
+        	}
+        	para = wf.fetchWikipedia(url);
+        } else {
+        	para = wf.readWikipedia(url);
+        }
+        index.indexPage(url, para);
+        queueInternalLinks(para);
+        return url;
 	}
 	
 	/**
@@ -64,8 +82,24 @@ public class WikiCrawler {
 	 * @param paragraphs
 	 */
 	// NOTE: absence of access level modifier means package-level
-	void queueInternalLinks(Elements paragraphs) {
+	 void queueInternalLinks(Elements paragraphs) {
         // FILL THIS IN!
+		for (Element p : paragraphs) {
+			queueHelper(p);
+		}
+	}
+
+	private void queueHelper(Element e) {
+		Elements elements = e.select("a[href]");
+        for (Element element : elements) {
+        	String url = element.attr("href");
+        	if (url.startsWith("/wiki/")) {
+        		String actualUrl = "https://en.wikipedia.org" + url;
+        		//System.out.println(String.format("%s has absUrl %s", url, actualUrl));
+        		queue.offer(actualUrl);
+        		//System.out.println(queue.size());
+        	}
+        }
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -84,9 +118,7 @@ public class WikiCrawler {
 		String res;
 		do {
 			res = wc.crawl(false);
-
-            // REMOVE THIS BREAK STATEMENT WHEN crawl() IS WORKING
-            break;
+			break;
 		} while (res == null);
 		
 		Map<String, Integer> map = index.getCounts("the");
